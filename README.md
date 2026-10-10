@@ -13,6 +13,8 @@ CERBERUS combines packet observations and Paper gameplay events to detect
 suspicious behavior, stop certain out-of-range actions, and give staff
 configurable violation alerts.
 
+[![Download latest JAR](https://img.shields.io/badge/Download-Latest%20JAR-brightgreen?logo=github)](https://github.com/Demon888322/CERBERUS-Anticheat/releases/latest/download/CERBERUS-1.0.0.jar)
+
 [Features](#features) · [Installation](#installation) · [Checks](#checks)
 · [Configuration](#configuration) · [Commands](#commands) · [Limitations](#important-limitations)
 
@@ -51,6 +53,12 @@ Minecraft versions have not been verified and may not be compatible.
 
 ## Installation
 
+### Download a release
+
+Download the latest ready-to-install
+[CERBERUS JAR from GitHub Releases](https://github.com/Demon888322/CERBERUS-Anticheat/releases/latest/download/CERBERUS-1.0.0.jar).
+You do not need Maven to install a release.
+
 ### Build from source
 
 Requirements: JDK 17 or later, Maven 3.9 or later, and network access to the
@@ -67,10 +75,11 @@ The shaded plugin is created at `target/CERBERUS-1.0.0.jar`.
 ### Install on Paper
 
 1. Back up your server and test the plugin on a staging server first.
-2. Copy `target/CERBERUS-1.0.0.jar` into the server's `plugins/` directory.
-3. Start the server once to create `plugins/CERBERUS/config.yml`.
-4. Review the configuration and staff alerts; tune checks for your server.
-5. Restart the server and confirm CERBERUS appears in `/plugins`.
+2. Download the release JAR above, or build it from source.
+3. Copy `CERBERUS-1.0.0.jar` into the server's `plugins/` directory.
+4. Start the server once to create `plugins/CERBERUS/config.yml`.
+5. Review the configuration and staff alerts; tune checks for your server.
+6. Restart the server and confirm CERBERUS appears in `/plugins`.
 
 When upgrading, CERBERUS merges newly shipped client identifiers into the
 existing blacklist while preserving custom entries. Restart the server when
