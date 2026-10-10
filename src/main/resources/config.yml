@@ -1,0 +1,92 @@
+# CERBERUS configuration.
+# Review detections on a test server first: reported client identifiers are untrusted,
+# and movement/inventory checks can be affected by latency, plugins, and game mechanics.
+
+config-version: 8
+
+messages:
+  # Prefix prepended to staff violation alerts. Supports legacy '&' color codes.
+  prefix: '&8[&cCERBERUS&8] '
+  # Alert placeholders: {player}, {check}, {vl}, {detail}.
+  alert: '&c{player} &7failed &f{check} &7(VL: &c{vl}&7) &8- &7{detail}'
+checks:
+  decay:
+    # Amount removed from each check's VL once per interval. Set amount to 0 to disable VL decay.
+    amount: 1.0
+    interval-seconds: 30
+
+  autoclicker:
+    enabled: true
+    # Require very high swing counts across consecutive full one-second windows.
+    minimum-swings-per-second: 18
+    consecutive-seconds: 6
+    vl-threshold: 8.0
+    # Experimental heuristic: alert staff by default; opt in to 24-hour auto-bans after testing.
+    auto-ban-enabled: false
+
+  brand:
+    enabled: true
+    # Matches are based on client-reported brand/channel data, not a scan of installed files.
+    # These values are spoofable; review matches before relying on them.
+    # Case-insensitive substrings checked in reported brands and registered plugin-message channels.
+    blacklist:
+      - meteor
+      - neteorite
+      - orchard
+      - vape
+      - liquidbounce
+      - wurst
+      - aristois
+      - freecam
+      - xray
+      - baritone
+      - auto-totem
+      - autototem
+      - thunderhack
+      - rusherhack
+      - impact
+      - future
+      - novoline
+      - sigma
+      - rise
+
+  autototem:
+    enabled: true
+    # Restocks faster than this are counted as suspicious; server tick timing is approximate.
+    minimum-restock-ms: 100
+    # Buffer increases per fast restock and decreases on slower restocks and decay ticks.
+    buffer-increment: 1.0
+    buffer-decay: 0.25
+    # One violation is added each time this buffer is reached, then this amount is subtracted.
+    buffer-threshold: 5.0
+    # Punishment is issued when AutoTotem VL crosses this threshold.
+    vl-threshold: 5.0
+
+  reach:
+    enabled: true
+    # Maximum distance from the player's eyes to the nearest point on a block.
+    # Remote mining, block damage, and right-click interactions beyond this range are cancelled.
+    maximum-block-distance: 5.0
+    # Legacy center-distance limit for block placement and entity interactions.
+    maximum-distance: 5.2
+    # Entity attacks check distance to the closest point on the target hitbox.
+    maximum-entity-distance: 3.5
+    vl-threshold: 10.0
+
+  movement:
+    enabled: true
+    # Conservative horizontal distance allowance per server tick.
+    max-horizontal-per-tick: 0.75
+    # Air time and height gain limits used to flag sustained flight-like movement.
+    flight-air-ticks: 12
+    flight-max-rise: 1.8
+    vl-threshold: 6.0
+
+  xray:
+    enabled: true
+    # Ignore ore veins and require repeated concealed ore groups before adding violations.
+    minimum-rare-ore-groups: 4
+    max-blocks-between-ores: 24
+    vl-threshold: 6.0
+    # Experimental heuristic: alert staff by default; opt in to 24-hour auto-bans after testing.
+    auto-ban-enabled: false
