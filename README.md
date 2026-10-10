@@ -1,173 +1,179 @@
+<div align="center">
+
 # CERBERUS
 
-CERBERUS is a modular anti-cheat plugin for Paper servers. It uses PacketEvents
-for inbound plugin messages and Paper events for gameplay checks. PacketEvents
-is bundled in the release JAR; do not install a separate PacketEvents plugin
-unless you are intentionally managing a shared PacketEvents installation.
+### A configurable, server-side anti-cheat for Paper
 
-> **Detection limitations:** CERBERUS checks are heuristics, not proof of cheating.
-> A Minecraft server cannot inspect a player's installed client files. The client
-> identifier check only matches brand/channel data reported over the network;
-> clients can spoof or omit it. Inventory timing and event-based reach
-> measurements can be affected by latency, server tick load, game mechanics, and
-> other plugins. Review alerts and tune checks before using automatic bans.
-> CERBERUS implements its own limited set of server-side checks; it is not a
-> complete feature-for-feature replacement for Grim, Vulcan, or Themis.
+[![Build](https://img.shields.io/github/actions/workflow/status/Demon888322/CERBERUS-Anticheat/build.yml?branch=main&label=build)](https://github.com/Demon888322/CERBERUS-Anticheat/actions/workflows/build.yml)
+[![Minecraft](https://img.shields.io/badge/Minecraft-Paper%201.20.4-orange)](https://papermc.io/)
+[![Java](https://img.shields.io/badge/Java-17-blue)](https://adoptium.net/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+CERBERUS combines packet observations and Paper gameplay events to detect
+suspicious behavior, stop certain out-of-range actions, and give staff
+configurable violation alerts.
+
+[Features](#features) · [Installation](#installation) · [Checks](#checks)
+· [Configuration](#configuration) · [Commands](#commands) · [Limitations](#important-limitations)
+
+</div>
+
+---
+
+## Features
+
+- **Packet-aware client identifiers** using PacketEvents and configurable
+  brand/channel matching.
+- **Reach protection** that cancels selected out-of-range block interactions
+  and entity attacks.
+- **Movement heuristics** for unusually fast horizontal movement and sustained
+  flight-like movement.
+- **Inventory and combat heuristics** for rapid AutoTotem restocking and
+  sustained high arm-swing rates.
+- **X-ray mining-pattern alerts** for repeated, closely spaced finds of
+  concealed high-value ores.
+- **Violation tracking and staff alerts**, with configurable thresholds and
+  automatic violation decay.
+- **Built-in 24-hour temporary bans** for established checks, with opt-in
+  automatic bans for the experimental AutoClicker and Xray checks.
+- **Live configuration reload** through `/cerberus reload`.
 
 ## Compatibility
 
-| Component | Project target | Notes |
-| --- | --- | --- |
-| Minecraft server | Paper 1.20.4 API | `plugin.yml` declares API version `1.20`. Later Paper versions are not verified by this project; compatibility is not guaranteed. |
-| Java bytecode | Java 17 | The project compiles with `--release 17`. Use the Java runtime required by your Paper server; newer Minecraft versions may require a newer Java runtime. |
-| PacketEvents | 2.7.0 | Bundled and relocated into the plugin JAR. |
+| Component | Target |
+| --- | --- |
+| Server API | Paper 1.20.4 |
+| Java | 17 |
+| PacketEvents | 2.7.0, bundled and relocated in the plugin JAR |
 
-The Maven dependency targets Paper `1.20.4-R0.1-SNAPSHOT`. This identifies the
-compile API, not a claim that every later Paper/Minecraft release has been
-tested. Check your server's Paper requirements before selecting a Java runtime.
+The Paper API version is the project's compile target. Other server or
+Minecraft versions have not been verified and may not be compatible.
 
 ## Installation
 
-1. Back up your server and use a test server first.
-2. Build CERBERUS as described below, or obtain the packaged JAR from your
-   trusted release source.
-3. Copy `target/CERBERUS-1.0.0.jar` into the Paper server's `plugins/` folder.
-4. Start the server once to generate `plugins/CERBERUS/config.yml`.
-5. Review and tune the configuration before enabling automatic bans.
-6. Restart the server and verify startup in the console with `/plugins`.
+### Build from source
 
-On upgrade from an older CERBERUS version, the plugin merges newly shipped
-client identifiers into the existing blacklist while preserving custom entries.
-
-Do not use `/reload` or a plugin-reload utility to install or update CERBERUS.
-Restart the server instead.
-
-## Build from source
-
-Requirements:
-
-- JDK 17 or newer
-- Maven 3.9 or newer
-- Network access to the Paper and CodeMC Maven repositories for dependencies
-
-Run from the project root:
+Requirements: JDK 17 or later, Maven 3.9 or later, and network access to the
+Paper and CodeMC Maven repositories.
 
 ```shell
+git clone https://github.com/Demon888322/CERBERUS-Anticheat.git
+cd CERBERUS-Anticheat
 mvn --batch-mode clean verify
 ```
 
-The shaded plugin is produced at `target/CERBERUS-1.0.0.jar`. Paper API is a
-provided dependency; PacketEvents is bundled in the artifact.
+The shaded plugin is created at `target/CERBERUS-1.0.0.jar`.
 
-## Commands and permissions
+### Install on Paper
+
+1. Back up your server and test the plugin on a staging server first.
+2. Copy `target/CERBERUS-1.0.0.jar` into the server's `plugins/` directory.
+3. Start the server once to create `plugins/CERBERUS/config.yml`.
+4. Review the configuration and staff alerts; tune checks for your server.
+5. Restart the server and confirm CERBERUS appears in `/plugins`.
+
+When upgrading, CERBERUS merges newly shipped client identifiers into the
+existing blacklist while preserving custom entries. Restart the server when
+installing or updating the JAR; do not use `/reload` or plugin-reload tools.
+
+## Checks
+
+| Check | What it observes | Default response |
+| --- | --- | --- |
+| Client identifier | Configured substrings in reported client-brand payloads, plugin-message channels, and registered channel lists. | 24-hour temporary ban on a match. |
+| Reach | Out-of-range block damage, breaking, right-click interactions, placement/entity interactions, and direct entity attacks. | Cancels detected actions; 24-hour ban at VL 10. |
+| Movement | Heuristics for excessive horizontal movement and sustained flight-like movement. | 24-hour ban at VL 6. |
+| AutoTotem | Repeated offhand totem replenishments measured below the configured timing threshold. | 24-hour ban at VL 5. |
+| AutoClicker | At least 18 arm swings per second across six consecutive one-second windows. | Staff alert at VL 8; auto-ban is opt-in. |
+| Xray | Repeated, closely spaced finds of concealed diamond, emerald, or ancient-debris ore groups. | Staff alert at VL 6; auto-ban is opt-in. |
+
+Violation levels decay by 1 every 30 seconds by default. Each check's
+threshold, enablement, and related heuristic settings can be adjusted in
+`config.yml`.
+
+## Configuration
+
+The generated `plugins/CERBERUS/config.yml` is the canonical, commented
+configuration. Use `/cerberus reload` after changing runtime settings.
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `checks.brand.enabled` / `checks.brand.blacklist` | `true` / configured list | Toggle and match reported brand/channel identifiers. |
+| `checks.autototem.minimum-restock-ms` | `100` | Minimum observed restock timing in milliseconds. |
+| `checks.reach.maximum-block-distance` | `5.0` | Maximum distance to the nearest point on a block. |
+| `checks.reach.maximum-distance` | `5.2` | Maximum distance for block placement and entity interactions. |
+| `checks.reach.maximum-entity-distance` | `3.5` | Maximum distance to the nearest point on a target hitbox for attacks. |
+| `checks.movement.max-horizontal-per-tick` | `0.75` | Horizontal movement allowance used by the speed heuristic. |
+| `checks.movement.flight-air-ticks` / `flight-max-rise` | `12` / `1.8` | Air-time and height settings for the flight-like heuristic. |
+| `checks.xray.minimum-rare-ore-groups` | `4` | Distinct high-value ore groups before suspicious mining counts. |
+| `checks.xray.max-blocks-between-ores` | `24` | Maximum solid blocks mined between qualifying ore groups. |
+| `checks.autoclicker.minimum-swings-per-second` | `18` | Minimum swings in a complete one-second window. |
+| `checks.autoclicker.consecutive-seconds` | `6` | Consecutive high-rate windows required for an AutoClicker violation. |
+| `checks.autoclicker.auto-ban-enabled` | `false` | Opt in to a 24-hour AutoClicker ban after validating on your server. |
+| `checks.xray.auto-ban-enabled` | `false` | Opt in to a 24-hour Xray ban after validating on your server. |
+| `checks.decay.amount` / `interval-seconds` | `1.0` / `30` | Violation decay amount and interval. Set amount to `0` to disable decay. |
+
+Established checks use a fixed `1d` temporary ban when their configured
+threshold is reached. AutoClicker and Xray alert staff at their thresholds by
+default; enable their `auto-ban-enabled` options only after observing and
+validating alerts on your server.
+
+## Commands
 
 | Command | Description | Permission |
 | --- | --- | --- |
-| `/cerberus` or `/cerberus help` | Show available administration commands. | `cerberus.admin` |
-| `/cerberus info` | Show the plugin version and configured check toggles. | `cerberus.admin` |
-| `/cerberus reload` | Reload `config.yml` without restarting. | `cerberus.admin` |
+| `/cerberus` or `/cerberus help` | Show help. | `cerberus.admin` |
+| `/cerberus info` | Show check status and punishment duration. | `cerberus.admin` |
+| `/cerberus reload` | Reload the configuration. | `cerberus.admin` |
 | `/cerberustempban <player> <duration> <reason>` | Apply a timed name ban; console only. | `cerberus.admin` |
 
 `/cerb` is an alias for `/cerberus`. The `cerberus.admin` permission defaults
-to operators and receives staff violation alerts. The built-in temporary-ban
-command accepts a positive integer followed by `s`, `m`, `h`, or `d` (for
-example, `30m`, `12h`, or `7d`).
+to operators and receives staff alerts. The temporary-ban command accepts a
+positive integer and a unit: `s`, `m`, `h`, or `d` (for example, `30m`, `12h`,
+or `1d`).
 
-## Checks and default behavior
+## Important limitations
 
-| Check | Default | Signal and behavior | Default punishment |
-| --- | --- | --- | --- |
-| Client identifier | Enabled | Matches configured substrings in reported `minecraft:brand` payloads, plugin-message channel names, or registered channel lists. This does not enumerate installed mods. | 1-day temporary name ban on a match. |
-| AutoClicker | Enabled | Checks for at least 18 arm swings per second across six consecutive one-second windows; one burst alone does not add a violation. This is an experimental heuristic, not proof of automation. | Staff alert at VL 8; auto-ban is opt-in. |
-| AutoTotem | Enabled | Buffers offhand totem replenishments measured below 100 ms; adds one VL when the buffer reaches 5. | 1-day temporary name ban when VL reaches 5. |
-| Reach | Enabled | Cancels remote block damage, mining, and right-click interactions beyond 5 blocks, block placement/entity interactions beyond 5.2 blocks, and direct entity attacks beyond 3.5 blocks. Repeated attempts against one block are rate-limited for VL scoring. | 1-day temporary name ban when VL reaches 10. |
-| Movement | Enabled | Checks excessive horizontal movement and sustained airborne movement outside common exempt states. | 1-day temporary name ban when VL reaches 6. |
-| Xray | Enabled | Flags repeated, closely spaced finds of fully concealed diamond, emerald, or ancient-debris ore groups. Veins are grouped to reduce obvious false positives. This is experimental and may have false positives. | Staff alert at VL 6; auto-ban is opt-in. |
+Anti-cheat detections are heuristics, not proof. **A server plugin cannot scan
+a player's installed client files or reliably identify every installed mod.**
+Client brand and channel data are supplied by the client and can be spoofed,
+hidden, or omitted.
 
-Violation levels decay by 1 every 30 seconds by default. AutoTotem's buffer also
-decays by 0.25 per decay interval and on slower replenishments. These settings
-are adjustable in `config.yml`.
+Movement, reach, mining-pattern, inventory-timing, and arm-swing checks can be
+affected by latency, server tick load, plugins, game mechanics, and player
+behavior. Xray and AutoClicker checks are experimental; review their alerts
+before enabling automatic bans. CERBERUS does not claim feature parity with
+Grim, Vulcan, Themis, or any other anti-cheat.
 
-**Roll out conservatively:** start on a staging server and tune checks before
-using them on a live server. Established checks can apply a fixed 24-hour ban
-at their configured thresholds. AutoClicker and Xray are experimental and
-alert staff only by default; their automatic bans are opt-in. Watch alerts
-under real server load and review false positives and interactions with other
-plugins. Reported brand/channel matches are spoofable and should not be used as
-ban evidence on their own.
-
-## Configuration reference
-
-The generated `plugins/CERBERUS/config.yml` is the canonical, commented
-configuration. Back it up before editing. Use `/cerberus reload` to reload
-changes to runtime check settings and messages; restart the server after
-updating the plugin JAR.
-
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| `messages.prefix` | `&8[&cCERBERUS&8] ` | Prefix for staff alerts. |
-| `messages.alert` | Configured template | Supports `{player}`, `{check}`, `{vl}`, and `{detail}`. |
-| `checks.decay.amount` / `interval-seconds` | `1.0` / `30` | VL decay amount and interval. Use amount `0` to disable VL decay. |
-| `checks.brand.enabled` / `blacklist` | `true` / list in config | Toggle and substrings checked against reported brand and channel-registration data; cannot enumerate installed client mods. |
-| `checks.autoclicker.minimum-swings-per-second` | `18` | Minimum arm-swing count per complete one-second window. |
-| `checks.autoclicker.consecutive-seconds` | `6` | Consecutive high-rate windows required for one violation. |
-| `checks.autoclicker.vl-threshold` | `8.0` | AutoClicker threshold for a staff alert. |
-| `checks.autoclicker.auto-ban-enabled` | `false` | Opt in to a fixed 24-hour ban at the AutoClicker threshold after validation. |
-| `checks.autototem.minimum-restock-ms` | `100` | Faster observed restocks increment the buffer. |
-| `checks.autototem.buffer-increment` / `buffer-decay` / `buffer-threshold` | `1.0` / `0.25` / `5.0` | Buffer increments, decay, and threshold for adding VL. |
-| `checks.autototem.vl-threshold` | `5.0` | VL threshold for a 24-hour ban. |
-| `checks.reach.maximum-distance` | `5.2` | Maximum eye-to-target-center distance in blocks. |
-| `checks.reach.maximum-block-distance` | `5.0` | Maximum eye-to-block distance; out-of-range damage, breaking, and right-click interactions are cancelled. |
-| `checks.reach.maximum-entity-distance` | `3.5` | Maximum distance to the closest point on an entity hitbox for direct attacks. |
-| `checks.reach.vl-threshold` | `10.0` | VL threshold for a 24-hour ban. |
-| `checks.movement.max-horizontal-per-tick` | `0.75` | Horizontal movement allowance before a speed violation is added. |
-| `checks.movement.flight-air-ticks` / `flight-max-rise` | `12` / `1.8` | Air duration and height gain used by the flight-like movement heuristic. |
-| `checks.movement.vl-threshold` | `6.0` | Movement violation threshold for a 24-hour ban. |
-| `checks.xray.minimum-rare-ore-groups` | `4` | Number of distinct high-value ore groups required before suspicious mining patterns count. |
-| `checks.xray.max-blocks-between-ores` | `24` | Maximum solid blocks mined between concealed high-value ore groups for the pattern to count. |
-| `checks.xray.vl-threshold` | `6.0` | Xray threshold for a staff alert. |
-| `checks.xray.auto-ban-enabled` | `false` | Opt in to a fixed 24-hour ban at the Xray threshold after validation. |
-
-Established checks use the built-in `cerberustempban` command and a fixed `1d`
-duration after their thresholds are reached. Experimental AutoClicker and Xray
-checks alert staff at their thresholds by default; set the corresponding
-`checks.autoclicker.auto-ban-enabled` or `checks.xray.auto-ban-enabled` option
-to `true` only after testing on your server to opt into 24-hour bans. Disable
-checks or adjust thresholds to tune detection. Client-reported mod identifiers
-are spoofable and are never a reliable scan of installed client files.
+Start on a staging server, monitor staff alerts under real conditions, and tune
+or disable checks that produce false positives. No anti-cheat can guarantee
+detection of every cheat or provide a false-positive-free result.
 
 ## Troubleshooting
 
-- **Plugin is missing from `/plugins`:** check the server console during
-  startup, confirm the JAR is in the active server's `plugins/` directory, and
-  verify that the server is Paper rather than an unsupported server type.
-- **Plugin fails to enable:** check the server's `logs/latest.log` for the first
-  CERBERUS or PacketEvents exception. Confirm the Java runtime meets that
-  Paper version's requirements and that the packaged artifact is the shaded
-  `CERBERUS-1.0.0.jar`.
-- **Build cannot resolve a dependency:** confirm JDK 17+, Maven 3.9+, and
-  network access to the Paper and CodeMC Maven repositories, then retry
-  `mvn --batch-mode clean verify`.
-- **A CERBERUS ban was not applied:** verify that `cerberustempban` is registered
-  in `plugin.yml` and inspect the server console for the logged dispatch error.
-- **Reload does not appear to update a setting:** review the console for YAML
-  parse errors and confirm the key is under the correct section. Restart after
-  replacing the plugin JAR.
-- **Unexpected alerts or punishments:** disable the affected check or raise
-  its violation threshold while investigating; review server tick health, latency, and
-  interactions with other gameplay plugins.
+- **CERBERUS is missing from `/plugins`:** verify Paper is running and the JAR
+  is in the active server's `plugins/` directory.
+- **The plugin fails to enable:** check `logs/latest.log` for the first
+  CERBERUS or PacketEvents error and verify the server's Java compatibility.
+- **The build cannot resolve dependencies:** verify JDK/Maven requirements and
+  network access to the Paper and CodeMC repositories.
+- **A ban was not applied:** check that `cerberustempban` is registered and
+  inspect the console for a command-dispatch error.
+- **Alerts seem incorrect:** review the relevant threshold and exemption
+  settings, then test under normal latency, tick load, and plugin conditions.
 
-## Contributing and reporting issues
+## Contributing and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development and pull request
-guidance. When reporting a reproducible issue, include the CERBERUS version,
-Paper build, Java version, relevant redacted log excerpt, relevant
-configuration values, and steps to reproduce. Do not include player IP
-addresses, credentials, or other private data.
+Contributions and reproducible bug reports are welcome. See
+[CONTRIBUTING.md](CONTRIBUTING.md) and the
+[bug report template](.github/ISSUE_TEMPLATE/bug_report.md). Include the
+CERBERUS version, Paper build, Java version, relevant redacted logs, and steps
+to reproduce. Do not post player IP addresses, credentials, or other private
+information.
 
-For suspected security vulnerabilities, avoid posting exploit details in a
-public issue. Contact the project maintainers through a private channel they
-have published, and include only the minimum information needed to reproduce.
+For suspected security vulnerabilities, do not publish exploit details in a
+public issue. Contact the maintainers privately through a channel they have
+published.
 
 ## License
 
